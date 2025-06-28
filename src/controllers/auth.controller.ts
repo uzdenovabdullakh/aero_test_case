@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import authService from '../services/auth.service';
 import { extractErrorMessage } from '@/utils/helpers';
+import { AuthRequest } from '@/types/auth-request.type';
 
 class AuthController {
   async signUp(req: Request, res: Response) {
@@ -33,7 +34,7 @@ class AuthController {
     }
   }
 
-  async getUserInfo(req: Request, res: Response) {
+  async getUserInfo(req: AuthRequest, res: Response) {
     try {
       res.json({ id: req.user?.id });
     } catch (error) {
