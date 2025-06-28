@@ -1,16 +1,19 @@
 import { File } from '../models/file.model';
-import fs from 'fs';
+import fs from 'fs/promises';
 import path from 'path';
 
 class FileService {
   async uploadFile(userId: string, file: Express.Multer.File) {
     const uploadDir = path.join(__dirname, '../../uploads');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
+
+    try {
+      await fs.access(uploadDir);
+    } catch (error) {
+      await fs.mkdir(uploadDir, { recursive: true });
     }
 
     const filePath = path.join(uploadDir, file.originalname);
-    fs.writeFileSync(filePath, file.buffer);
+    await fs.writeFile(filePath, file.buffer);
 
     const fileRecord = await File.create({
       name: path.parse(file.originalname).name,
@@ -43,7 +46,12 @@ class FileService {
     if (!file) {
       throw new Error('File not found');
     }
-    return file;
+    try {
+      await fs.access(file.path);
+      return file;
+    } catch (error) {
+      throw new Error('File not found on server');
+    }
   }
 
   async updateFile(userId: string, fileId: number, newFile: Express.Multer.File) {
@@ -52,10 +60,14 @@ class FileService {
       throw new Error('File not found');
     }
 
-    fs.unlinkSync(oldFile.path);
+    try {
+      await fs.unlink(oldFile.path);
+    } catch (error) {
+      console.warn(`Failed to delete old file: ${oldFile.path}`, error);
+    }
 
     const filePath = path.join(path.dirname(oldFile.path), newFile.originalname);
-    fs.writeFileSync(filePath, newFile.buffer);
+    await fs.writeFile(filePath, newFile.buffer);
 
     await oldFile.update({
       name: path.parse(newFile.originalname).name,
@@ -74,7 +86,12 @@ class FileService {
       throw new Error('File not found');
     }
 
-    fs.unlinkSync(file.path);
+    try {
+      await fs.unlink(file.path);
+    } catch (error) {
+      console.warn(`Failed to delete file: ${file.path}`, error);
+    }
+
     await file.destroy();
   }
 }
